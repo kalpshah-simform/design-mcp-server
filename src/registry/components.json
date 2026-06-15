@@ -1,0 +1,64 @@
+{
+  "Button": {
+    "description": "Primary action button",
+    "props": {
+      "variant": ["primary", "secondary"],
+      "size": ["sm", "md", "lg"]
+    },
+    "examples": ["<Button variant='primary'>Save</Button>"],
+    "tags": ["actions", "forms", "cta"],
+    "deprecated": false
+  },
+  "Input": {
+    "description": "Text input field for forms",
+    "props": {
+      "type": ["text", "email", "password"],
+      "size": ["sm", "md", "lg"]
+    },
+    "examples": ["<Input type='email' placeholder='name@example.com' />"],
+    "tags": ["forms", "fields", "data-entry"],
+    "deprecated": false
+  },
+  "Card": {
+    "description": "Content container with optional header/footer",
+    "props": {
+      "elevation": ["none", "sm", "md"],
+      "padding": ["sm", "md", "lg"]
+    },
+    "examples": ["<Card elevation='sm'>Content</Card>"],
+    "tags": ["layout", "container", "dashboard"],
+    "deprecated": false
+  },
+  "Modal": {
+    "description": "Overlay dialog for focused tasks",
+    "props": {
+      "size": ["sm", "md", "lg"],
+      "dismissible": ["true", "false"]
+    },
+    "examples": ["<Modal size='md' dismissible='true' />"],
+    "tags": ["overlay", "dialog", "confirmation"],
+    "deprecated": false
+  },
+  "DataTable": {
+    "description": "Tabular data view with sorting and pagination",
+    "props": {
+      "density": ["compact", "comfortable"],
+      "pagination": ["true", "false"]
+    },
+    "examples": ["<DataTable pagination='true' />"],
+    "tags": ["table", "pagination", "admin", "reporting"],
+    "deprecated": false
+  },
+  "ButtonLegacy": {
+    "description": "Legacy button component (deprecated, use Button instead)",
+    "props": {
+      "type": ["button", "submit", "reset"]
+    },
+    "examples": ["<ButtonLegacy type='button'>Click</ButtonLegacy>"],
+    "tags": ["actions", "forms", "deprecated"],
+    "deprecated": true,
+    "deprecatedVersion": "2.0.0",
+    "replacement": "Button",
+    "migrationNotes": "ButtonLegacy was renamed to Button in v2.0.0. Update all imports from ButtonLegacy to Button and use the new 'variant' prop instead of 'type' prop."
+  }
+}

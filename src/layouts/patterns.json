@@ -1,0 +1,86 @@
+{
+  "dashboard": {
+    "id": "dashboard",
+    "name": "Dashboard Layout",
+    "description": "Multi-section dashboard with sidebar navigation and main content area for data visualization and overview cards.",
+    "tags": ["admin", "data", "overview", "cards", "navigation"],
+    "slots": {
+      "header": {
+        "description": "Top navigation bar with branding and user profile",
+        "suggestedComponents": ["Button", "Input", "Card"]
+      },
+      "sidebar": {
+        "description": "Left sidebar with navigation menu and filters",
+        "suggestedComponents": ["Button", "Card"]
+      },
+      "main": {
+        "description": "Central content area with data cards and visualizations",
+        "suggestedComponents": ["Card", "DataTable", "Button"]
+      },
+      "footer": {
+        "description": "Bottom footer with pagination or additional controls",
+        "suggestedComponents": ["Button", "Card"]
+      }
+    },
+    "example": "<div className='flex h-screen'><aside className='w-64 bg-gray-900'>{/* sidebar */}</aside><main className='flex-1 flex flex-col'><header className='bg-white border-b'>{/* header */}</header><section className='flex-1 overflow-auto p-6'>{/* main content grid */}</section><footer className='bg-gray-50 border-t p-4'>{/* footer */}</footer></main></div>"
+  },
+  "auth": {
+    "id": "auth",
+    "name": "Authentication Layout",
+    "description": "Centered single-column card layout for login, registration, or other authentication flows.",
+    "tags": ["auth", "login", "register", "forms", "public"],
+    "slots": {
+      "logo": {
+        "description": "Logo or branding area at the top",
+        "suggestedComponents": ["Card"]
+      },
+      "main": {
+        "description": "Central card containing form fields and submission controls",
+        "suggestedComponents": ["Input", "Button", "Card"]
+      },
+      "footer": {
+        "description": "Bottom links for password recovery, sign up, or terms",
+        "suggestedComponents": ["Button"]
+      }
+    },
+    "example": "<div className='min-h-screen flex items-center justify-center bg-gray-50 px-4'><div className='w-full max-w-md'><div className='mb-8 text-center'>{/* logo */}</div><div className='bg-white rounded-lg shadow'>{/* form card */}</div><div className='mt-4 text-center'>{/* footer links */}</div></div></div>"
+  },
+  "form": {
+    "id": "form",
+    "name": "Form Layout",
+    "description": "Two-column form layout with labeled fields and a separate action bar for submit and cancel buttons.",
+    "tags": ["form", "settings", "data-entry", "fields"],
+    "slots": {
+      "header": {
+        "description": "Form title and description section",
+        "suggestedComponents": ["Card"]
+      },
+      "main": {
+        "description": "Form fields arranged in a responsive grid with labels",
+        "suggestedComponents": ["Input", "Card"]
+      },
+      "actions": {
+        "description": "Action buttons aligned to the left or right",
+        "suggestedComponents": ["Button"]
+      }
+    },
+    "example": "<form className='max-w-2xl'><div className='mb-6'><h2 className='text-2xl font-bold'>{/* title */}</h2><p className='text-gray-600'>{/* description */}</p></div><div className='space-y-6 mb-6'><div className='grid grid-cols-2 gap-4'>{/* input fields */}</div></div><div className='flex gap-3 justify-end'>{/* action buttons */}</div></form>"
+  },
+  "settings": {
+    "id": "settings",
+    "name": "Settings Layout",
+    "description": "Sidebar navigation with settings categories and corresponding content panel for managing preferences.",
+    "tags": ["settings", "account", "preferences", "navigation"],
+    "slots": {
+      "sidebar": {
+        "description": "Left sidebar with settings category navigation",
+        "suggestedComponents": ["Button", "Card"]
+      },
+      "main": {
+        "description": "Main panel showing the selected settings category content",
+        "suggestedComponents": ["Input", "Button", "Card"]
+      }
+    },
+    "example": "<div className='flex gap-6 max-w-4xl'><aside className='w-48 flex-shrink-0'><nav className='space-y-2'>{/* category buttons */}</nav></aside><main className='flex-1'><div className='bg-white rounded-lg p-6'>{/* settings form */}</div></main></div>"
+  }
+}
