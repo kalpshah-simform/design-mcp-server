@@ -16,14 +16,17 @@ import { getTailwindTheme } from "./tools/getTailwindTheme.js";
 import { listComponentStories } from "./tools/listComponentStories.js";
 import { validateAccessibility } from "./tools/validateAccessibility.js";
 import { compareThemes } from "./tools/compareThemes.js";
+import { getCssVariables } from "./tools/getCssVariables.js";
 import { loadTheme, clearThemeCache } from "./loaders/themeLoader.js";
 
 const app = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
   genReqId: (req) => {
     const header = req.headers["x-request-id"];
-    return (Array.isArray(header) ? header[0] : header) ??
-      Math.random().toString(36).slice(2, 10);
+    return (
+      (Array.isArray(header) ? header[0] : header) ??
+      Math.random().toString(36).slice(2, 10)
+    );
   },
 });
 
@@ -444,6 +447,25 @@ function createMcpServer(): McpServer {
     },
   );
 
+  server.registerTool(
+    "get-css-variables",
+    {
+      description:
+        "Return all CSS custom properties (--variable: value) discovered in the project's CSS files, grouped both as a flat map and by selector (:root, .dark, [data-theme], etc.). Use this to understand the token layer beneath Tailwind or to resolve var(--x) references.",
+    },
+    async () => {
+      const result = getCssVariables();
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ success: true, data: result }),
+          },
+        ],
+      };
+    },
+  );
+
   return server;
 }
 
@@ -502,15 +524,13 @@ await app.register(
         try {
           return { success: true, data: getTheme(themeName) };
         } catch {
-          return reply
-            .code(404)
-            .send({
-              success: false,
-              error: {
-                code: "THEME_NOT_FOUND",
-                message: `Theme '${themeName}' was not found.`,
-              },
-            });
+          return reply.code(404).send({
+            success: false,
+            error: {
+              code: "THEME_NOT_FOUND",
+              message: `Theme '${themeName}' was not found.`,
+            },
+          });
         }
       },
     );
@@ -524,27 +544,23 @@ await app.register(
       async (request, reply) => {
         const componentName = request.query.name?.trim();
         if (!componentName) {
-          return reply
-            .code(400)
-            .send({
-              success: false,
-              error: {
-                code: "INVALID_REQUEST",
-                message: "Query parameter 'name' is required.",
-              },
-            });
+          return reply.code(400).send({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "Query parameter 'name' is required.",
+            },
+          });
         }
         const details = getComponentDetails(componentName);
         if (!details) {
-          return reply
-            .code(404)
-            .send({
-              success: false,
-              error: {
-                code: "COMPONENT_NOT_FOUND",
-                message: `Component '${componentName}' was not found.`,
-              },
-            });
+          return reply.code(404).send({
+            success: false,
+            error: {
+              code: "COMPONENT_NOT_FOUND",
+              message: `Component '${componentName}' was not found.`,
+            },
+          });
         }
         return { success: true, data: { name: componentName, ...details } };
       },
@@ -555,15 +571,13 @@ await app.register(
       async (request, reply) => {
         const query = request.query.q?.trim();
         if (!query) {
-          return reply
-            .code(400)
-            .send({
-              success: false,
-              error: {
-                code: "INVALID_REQUEST",
-                message: "Query parameter 'q' is required.",
-              },
-            });
+          return reply.code(400).send({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "Query parameter 'q' is required.",
+            },
+          });
         }
         return { success: true, data: searchComponents(query) };
       },
@@ -577,15 +591,13 @@ await app.register(
           q: request.query.q?.trim(),
         });
         if (result === null) {
-          return reply
-            .code(404)
-            .send({
-              success: false,
-              error: {
-                code: "LAYOUT_NOT_FOUND",
-                message: `Layout category '${request.query.category}' was not found.`,
-              },
-            });
+          return reply.code(404).send({
+            success: false,
+            error: {
+              code: "LAYOUT_NOT_FOUND",
+              message: `Layout category '${request.query.category}' was not found.`,
+            },
+          });
         }
         return { success: true, data: result };
       },
@@ -597,18 +609,16 @@ await app.register(
         try {
           return { success: true, data: validateDesign(request.body) };
         } catch (error) {
-          return reply
-            .code(400)
-            .send({
-              success: false,
-              error: {
-                code: "INVALID_REQUEST",
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : "Invalid request body.",
-              },
-            });
+          return reply.code(400).send({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Invalid request body.",
+            },
+          });
         }
       },
     );
@@ -617,15 +627,13 @@ await app.register(
       try {
         return { success: true, data: getTailwindTheme() };
       } catch {
-        return reply
-          .code(404)
-          .send({
-            success: false,
-            error: {
-              code: "TAILWIND_CONFIG_NOT_FOUND",
-              message: "tailwind.config.ts or tailwind.config.js not found.",
-            },
-          });
+        return reply.code(404).send({
+          success: false,
+          error: {
+            code: "TAILWIND_CONFIG_NOT_FOUND",
+            message: "tailwind.config.ts or tailwind.config.js not found.",
+          },
+        });
       }
     });
 
@@ -647,18 +655,14 @@ await app.register(
       try {
         return { success: true, data: validateAccessibility(request.body) };
       } catch (error) {
-        return reply
-          .code(400)
-          .send({
-            success: false,
-            error: {
-              code: "INVALID_REQUEST",
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Invalid request body.",
-            },
-          });
+        return reply.code(400).send({
+          success: false,
+          error: {
+            code: "INVALID_REQUEST",
+            message:
+              error instanceof Error ? error.message : "Invalid request body.",
+          },
+        });
       }
     });
 
@@ -691,6 +695,10 @@ await app.register(
         }
       },
     );
+
+    v1.get("/tools/get-css-variables", async () => {
+      return { success: true, data: getCssVariables() };
+    });
   },
   { prefix: "/v1" },
 );
@@ -715,7 +723,10 @@ function validateStartupThemes(): void {
   }
 
   if (files.length === 0) {
-    app.log.error({ themesDir }, "STARTUP ERROR: No theme files found in themes directory");
+    app.log.error(
+      { themesDir },
+      "STARTUP ERROR: No theme files found in themes directory",
+    );
     process.exit(1);
   }
 
@@ -735,11 +746,17 @@ function validateStartupThemes(): void {
   }
 
   if (errors.length > 0) {
-    app.log.error({ errors }, "STARTUP ERROR: One or more theme files are invalid");
+    app.log.error(
+      { errors },
+      "STARTUP ERROR: One or more theme files are invalid",
+    );
     process.exit(1);
   }
 
-  app.log.info({ count: files.length, files }, "Startup theme validation passed");
+  app.log.info(
+    { count: files.length, files },
+    "Startup theme validation passed",
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -750,7 +767,9 @@ validateStartupThemes();
 await app
   .listen({ port: 3000 })
   .then(() => {
-    app.log.info("Design System MCP server is running on http://localhost:3000");
+    app.log.info(
+      "Design System MCP server is running on http://localhost:3000",
+    );
   })
   .catch((err) => {
     app.log.error({ err }, "Failed to start server");
