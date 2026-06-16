@@ -1,12 +1,24 @@
 import path from "node:path";
 import fs from "node:fs";
 
+// Documented limitations of the regex/brace-counting parser.
+// Any of these patterns in the theme block will surface as parserWarnings
+// on the returned TailwindTheme so callers can decide how to proceed.
+export const PARSER_LIMITATIONS = [
+  "Arrow function values (e.g., () => '...') are silently dropped",
+  "CSS variables (e.g., var(--brand-color)) cannot be resolved",
+  "Template literals (e.g., `${base}-500`) are not evaluated",
+  "Object spread (...spread) is not expanded",
+  "require() or import() calls are not executed",
+] as const;
+
 interface TailwindTheme {
   colors?: Record<string, string>;
   spacing?: Record<string, string>;
   breakpoints?: Record<string, string>;
   borderRadius?: Record<string, string>;
   boxShadow?: Record<string, string>;
+  parserWarnings?: string[];
 }
 
 export function loadTailwindConfig(): TailwindTheme {
@@ -22,7 +34,7 @@ export function loadTailwindConfig(): TailwindTheme {
     configPath = jsPath;
   } else {
     throw new Error(
-      "tailwind.config.ts or tailwind.config.js not found in project root"
+      "tailwind.config.ts or tailwind.config.js not found in project root",
     );
   }
 
@@ -30,11 +42,24 @@ export function loadTailwindConfig(): TailwindTheme {
   return parseThemeFromConfig(content);
 }
 
+function detectParserWarnings(themeBlock: string): string[] {
+  const warnings: string[] = [];
+  if (/=>/.test(themeBlock)) warnings.push(PARSER_LIMITATIONS[0]);
+  if (/var\(--/.test(themeBlock)) warnings.push(PARSER_LIMITATIONS[1]);
+  if (/`/.test(themeBlock)) warnings.push(PARSER_LIMITATIONS[2]);
+  if (/\.\.\./.test(themeBlock)) warnings.push(PARSER_LIMITATIONS[3]);
+  if (/require\(/.test(themeBlock)) warnings.push(PARSER_LIMITATIONS[4]);
+  return warnings;
+}
+
 /**
  * Extract a named sub-object from a JS/TS config string using brace-counting,
  * then parse it as JSON. Never executes arbitrary code.
  */
-function extractObject(content: string, key: string): Record<string, unknown> | undefined {
+function extractObject(
+  content: string,
+  key: string,
+): Record<string, unknown> | undefined {
   const keyRegex = new RegExp(String.raw`\b${key}\s*:`);
   const keyMatch = keyRegex.exec(content);
   if (!keyMatch) return undefined;
@@ -48,7 +73,10 @@ function extractObject(content: string, key: string): Record<string, unknown> | 
     if (content[i] === "{") braceCount++;
     else if (content[i] === "}") {
       braceCount--;
-      if (braceCount === 0) { braceEnd = i; break; }
+      if (braceCount === 0) {
+        braceEnd = i;
+        break;
+      }
     }
   }
   if (braceEnd === -1) return undefined;
@@ -56,20 +84,25 @@ function extractObject(content: string, key: string): Record<string, unknown> | 
   const objStr = content.substring(braceStart, braceEnd + 1);
   try {
     const jsonStr = objStr
-      .replace(/,(\s*[}\]])/g, "$1")                       // trailing commas
-      .replace(/'([^']+)'(\s*:)/g, '"$1"$2')               // single-quoted keys → double
-      .replace(/:\s*'([^']*)'/g, ': "$1"')                 // single-quoted values → double
-      .replace(/(['"])?([a-zA-Z_$][a-zA-Z0-9_$-]*)\1\s*:/g, (match, quote, k) => {
-        if (quote) return match;
-        return `"${k}":`;
-      });                                                   // unquoted keys → double-quoted
+      .replace(/,(\s*[}\]])/g, "$1") // trailing commas
+      .replace(/'([^']+)'(\s*:)/g, '"$1"$2') // single-quoted keys → double
+      .replace(/:\s*'([^']*)'/g, ': "$1"') // single-quoted values → double
+      .replace(
+        /(['"])?([a-zA-Z_$][a-zA-Z0-9_$-]*)\1\s*:/g,
+        (match, quote, k) => {
+          if (quote) return match;
+          return `"${k}":`;
+        },
+      ); // unquoted keys → double-quoted
     return JSON.parse(jsonStr) as Record<string, unknown>;
   } catch {
     return undefined;
   }
 }
 
-function flatStrings(obj: Record<string, unknown> | undefined): Record<string, string> | undefined {
+function flatStrings(
+  obj: Record<string, unknown> | undefined,
+): Record<string, string> | undefined {
   if (!obj) return undefined;
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -99,21 +132,26 @@ function parseThemeFromConfig(configContent: string): TailwindTheme {
     if (configContent[i] === "{") braceCount++;
     else if (configContent[i] === "}") {
       braceCount--;
-      if (braceCount === 0) { braceEnd = i; break; }
+      if (braceCount === 0) {
+        braceEnd = i;
+        break;
+      }
     }
   }
   if (braceEnd === -1) return {};
 
   const themeStr = configContent.substring(braceStart, braceEnd + 1);
+  const parserWarnings = detectParserWarnings(themeStr);
 
   // Extract the extend block once; merge its values into each base key below.
   const extendObj = extractObject(themeStr, "extend");
 
   // Tailwind uses 'screens' for breakpoints; accept 'breakpoints' for custom configs too.
   const screensBase =
-    extractObject(themeStr, "screens") ?? extractObject(themeStr, "breakpoints");
-  const screensExtend =
-    (extendObj?.screens ?? extendObj?.breakpoints) as Record<string, unknown> | undefined;
+    extractObject(themeStr, "screens") ??
+    extractObject(themeStr, "breakpoints");
+  const screensExtend = (extendObj?.screens ??
+    extendObj?.breakpoints) as Record<string, unknown> | undefined;
 
   return {
     colors: mergeExtend(
@@ -130,11 +168,14 @@ function parseThemeFromConfig(configContent: string): TailwindTheme {
     ),
     borderRadius: mergeExtend(
       flatStrings(extractObject(themeStr, "borderRadius")),
-      flatStrings(extendObj?.borderRadius as Record<string, unknown> | undefined),
+      flatStrings(
+        extendObj?.borderRadius as Record<string, unknown> | undefined,
+      ),
     ),
     boxShadow: mergeExtend(
       flatStrings(extractObject(themeStr, "boxShadow")),
       flatStrings(extendObj?.boxShadow as Record<string, unknown> | undefined),
     ),
+    ...(parserWarnings.length > 0 ? { parserWarnings } : {}),
   };
 }

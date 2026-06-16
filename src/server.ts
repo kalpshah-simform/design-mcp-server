@@ -1,4 +1,7 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -10,35 +13,58 @@ import { searchComponents } from "./tools/searchComponents.js";
 import { getLayoutPatterns } from "./tools/getLayoutPatterns.js";
 import { validateDesign } from "./tools/validateDesign.js";
 import { getTailwindTheme } from "./tools/getTailwindTheme.js";
-import { getComponentDeprecated } from "./tools/getComponentDeprecated.js";
 import { listComponentStories } from "./tools/listComponentStories.js";
 import { validateAccessibility } from "./tools/validateAccessibility.js";
+import { compareThemes } from "./tools/compareThemes.js";
+import { loadTheme, clearThemeCache } from "./loaders/themeLoader.js";
 
-const app = Fastify();
+const app = Fastify({
+  logger: { level: process.env.LOG_LEVEL ?? "info" },
+  genReqId: (req) => {
+    const header = req.headers["x-request-id"];
+    return (Array.isArray(header) ? header[0] : header) ??
+      Math.random().toString(36).slice(2, 10);
+  },
+});
 
-type GetThemeQuery = {
-  theme?: string;
-};
+// ---------------------------------------------------------------------------
+// Rate limiting — defaults: 100 req/min per IP; override via env vars
+// ---------------------------------------------------------------------------
+await app.register(rateLimit, {
+  max: Number.parseInt(process.env.RATE_LIMIT_MAX ?? "100"),
+  timeWindow: Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? "60000"),
+});
 
-type GetComponentDetailsQuery = {
-  name?: string;
-};
+// ---------------------------------------------------------------------------
+// Request timing — warn on slow responses (>2 s)
+// ---------------------------------------------------------------------------
+app.addHook("onResponse", (request, reply, done) => {
+  const elapsed = reply.elapsedTime;
+  if (elapsed > 2000) {
+    request.log.warn(
+      { elapsed, url: request.url, method: request.method },
+      "slow request",
+    );
+  }
+  done();
+});
 
-type SearchComponentsQuery = {
-  q?: string;
-};
-
-type GetLayoutPatternsQuery = {
-  category?: string;
-  q?: string;
-};
-
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+type GetThemeQuery = { theme?: string };
+type GetComponentDetailsQuery = { name?: string };
+type SearchComponentsQuery = { q?: string };
+type GetLayoutPatternsQuery = { category?: string; q?: string };
 type ValidateDesignBody = {
   components: string[];
   colors?: Record<string, string>;
   theme?: string;
 };
 
+// ---------------------------------------------------------------------------
+// MCP server factory
+// ---------------------------------------------------------------------------
 function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "design-system",
@@ -58,17 +84,13 @@ function createMcpServer(): McpServer {
     },
     async ({ theme }) => {
       const themeName = theme?.trim() || "default";
-
       try {
         const themeData = getTheme(themeName);
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                success: true,
-                data: themeData,
-              }),
+              text: JSON.stringify({ success: true, data: themeData }),
             },
           ],
         };
@@ -95,17 +117,15 @@ function createMcpServer(): McpServer {
   server.registerTool(
     "list-components",
     {
-      description: "List all available design-system components.",
+      description:
+        "List all available design-system components. Each entry includes the component name, a deprecated flag, and (if deprecated) the recommended replacement.",
     },
     async () => {
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: true,
-              data: listComponents(),
-            }),
+            text: JSON.stringify({ success: true, data: listComponents() }),
           },
         ],
       };
@@ -115,7 +135,8 @@ function createMcpServer(): McpServer {
   server.registerTool(
     "get-component-details",
     {
-      description: "Get full metadata for a design-system component.",
+      description:
+        "Get full metadata for a design-system component, including props, examples, tags, and any deprecation information.",
       inputSchema: {
         name: z.string().describe("Exact component name."),
       },
@@ -148,10 +169,7 @@ function createMcpServer(): McpServer {
             type: "text",
             text: JSON.stringify({
               success: true,
-              data: {
-                name: componentName,
-                ...details,
-              },
+              data: { name: componentName, ...details },
             }),
           },
         ],
@@ -163,9 +181,7 @@ function createMcpServer(): McpServer {
     "search-components",
     {
       description: "Search components by natural-language intent.",
-      inputSchema: {
-        q: z.string().describe("Search query."),
-      },
+      inputSchema: { q: z.string().describe("Search query.") },
     },
     async ({ q }) => {
       return {
@@ -185,12 +201,15 @@ function createMcpServer(): McpServer {
   server.registerTool(
     "get-layout-patterns",
     {
-      description: "Retrieve reusable page layout templates.",
+      description:
+        "Retrieve reusable page layout templates, including responsive breakpoint guidance and mobile examples.",
       inputSchema: {
         category: z
           .string()
           .optional()
-          .describe("Filter by layout category (dashboard, auth, form, settings)."),
+          .describe(
+            "Filter by layout id (dashboard, auth, form, settings, mobile-list, mobile-tabs).",
+          ),
         q: z
           .string()
           .optional()
@@ -225,10 +244,7 @@ function createMcpServer(): McpServer {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: true,
-              data: result,
-            }),
+            text: JSON.stringify({ success: true, data: result }),
           },
         ],
       };
@@ -238,7 +254,8 @@ function createMcpServer(): McpServer {
   server.registerTool(
     "validate-design",
     {
-      description: "Validate design components and colors against the design system.",
+      description:
+        "Validate design components and colors against the design system.",
       inputSchema: {
         components: z
           .array(z.string())
@@ -250,7 +267,7 @@ function createMcpServer(): McpServer {
         theme: z
           .string()
           .optional()
-          .describe("Theme name to validate against (default, customer-a, customer-b)."),
+          .describe("Theme name to validate against."),
       },
     },
     async ({ components, colors, theme }) => {
@@ -259,15 +276,11 @@ function createMcpServer(): McpServer {
         colors,
         theme: theme?.trim(),
       });
-
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: true,
-              data: result,
-            }),
+            text: JSON.stringify({ success: true, data: result }),
           },
         ],
       };
@@ -277,7 +290,8 @@ function createMcpServer(): McpServer {
   server.registerTool(
     "get-tailwind-theme",
     {
-      description: "Fetch Tailwind theme configuration (colors, spacing, breakpoints, etc.).",
+      description:
+        "Fetch Tailwind theme configuration (colors, spacing, breakpoints, etc.).",
     },
     async () => {
       try {
@@ -286,10 +300,7 @@ function createMcpServer(): McpServer {
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                success: true,
-                data: theme,
-              }),
+              text: JSON.stringify({ success: true, data: theme }),
             },
           ],
         };
@@ -302,7 +313,8 @@ function createMcpServer(): McpServer {
                 success: false,
                 error: {
                   code: "TAILWIND_CONFIG_NOT_FOUND",
-                  message: "tailwind.config.ts or tailwind.config.js not found.",
+                  message:
+                    "tailwind.config.ts or tailwind.config.js not found.",
                 },
               }),
             },
@@ -314,30 +326,10 @@ function createMcpServer(): McpServer {
   );
 
   server.registerTool(
-    "get-component-deprecated",
-    {
-      description: "List all deprecated components and their replacements.",
-    },
-    async () => {
-      const deprecated = getComponentDeprecated();
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              data: deprecated,
-            }),
-          },
-        ],
-      };
-    },
-  );
-
-  server.registerTool(
     "list-component-stories",
     {
-      description: "List all component stories discovered from Storybook files.",
+      description:
+        "List all component stories discovered from Storybook files.",
     },
     async () => {
       try {
@@ -346,23 +338,14 @@ function createMcpServer(): McpServer {
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                success: true,
-                data: stories,
-              }),
+              text: JSON.stringify({ success: true, data: stories }),
             },
           ],
         };
       } catch {
         return {
           content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                success: true,
-                data: {},
-              }),
-            },
+            { type: "text", text: JSON.stringify({ success: true, data: {} }) },
           ],
         };
       }
@@ -379,19 +362,20 @@ function createMcpServer(): McpServer {
           .record(z.string(), z.unknown())
           .optional()
           .describe("Component props for validation."),
+        theme: z
+          .string()
+          .optional()
+          .describe("Theme name to validate against."),
       },
     },
-    async ({ componentName, props }) => {
+    async ({ componentName, props, theme }) => {
       try {
-        const result = validateAccessibility({ componentName, props });
+        const result = validateAccessibility({ componentName, props, theme });
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                success: true,
-                data: result,
-              }),
+              text: JSON.stringify({ success: true, data: result }),
             },
           ],
         };
@@ -404,7 +388,52 @@ function createMcpServer(): McpServer {
                 success: false,
                 error: {
                   code: "INVALID_REQUEST",
-                  message: error instanceof Error ? error.message : "Invalid request.",
+                  message:
+                    error instanceof Error ? error.message : "Invalid request.",
+                },
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "compare-themes",
+    {
+      description:
+        "Compare two themes and return a token-level diff organized by category (colors, typography, spacing, radius, shadows, a11y). Useful when generating multi-tenant or white-label UI code.",
+      inputSchema: {
+        themeA: z.string().describe("First theme name (e.g. default)."),
+        themeB: z
+          .string()
+          .describe("Second theme name to compare against (e.g. customer-a)."),
+      },
+    },
+    async ({ themeA, themeB }) => {
+      try {
+        const result = compareThemes(themeA.trim(), themeB.trim());
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ success: true, data: result }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: {
+                  code: "THEME_NOT_FOUND",
+                  message:
+                    error instanceof Error ? error.message : "Theme not found.",
                 },
               }),
             },
@@ -418,6 +447,9 @@ function createMcpServer(): McpServer {
   return server;
 }
 
+// ---------------------------------------------------------------------------
+// MCP request handler
+// ---------------------------------------------------------------------------
 async function handleMcpRequest(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -431,7 +463,6 @@ async function handleMcpRequest(
 
   try {
     request.raw.headers.accept = "application/json, text/event-stream";
-
     await server.connect(transport);
     await transport.handleRequest(request.raw, reply.raw, request.body);
   } catch (error) {
@@ -441,238 +472,287 @@ async function handleMcpRequest(
       reply.raw.end(
         JSON.stringify({
           jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal server error",
-          },
+          error: { code: -32603, message: "Internal server error" },
           id: null,
         }),
       );
     }
-
-    console.error("Error handling MCP request:", error);
+    app.log.error({ err: error }, "Error handling MCP request");
   } finally {
     await transport.close();
     await server.close();
   }
 }
 
-// MCP transport endpoints for VS Code and other Streamable HTTP clients
+// ---------------------------------------------------------------------------
+// MCP transport endpoints
+// ---------------------------------------------------------------------------
 app.post("/", handleMcpRequest);
 app.post("/mcp", handleMcpRequest);
 
-// Backward-compatible REST endpoints
-app.get<{ Querystring: GetThemeQuery }>(
-  "/tools/get-theme",
-  async (request, reply) => {
-    const themeName = request.query.theme?.trim() || "default";
-
-    try {
-      const theme = getTheme(themeName);
-      return {
-        success: true,
-        data: theme,
-      };
-    } catch {
-      return reply.code(404).send({
-        success: false,
-        error: {
-          code: "THEME_NOT_FOUND",
-          message: `Theme '${themeName}' was not found.`,
-        },
-      });
-    }
-  },
-);
-
-app.get("/tools/list-components", async () => {
-  return {
-    success: true,
-    data: listComponents(),
-  };
-});
-
-app.get<{ Querystring: GetComponentDetailsQuery }>(
-  "/tools/get-component-details",
-  async (request, reply) => {
-    const componentName = request.query.name?.trim();
-
-    if (!componentName) {
-      return reply.code(400).send({
-        success: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Query parameter 'name' is required.",
-        },
-      });
-    }
-
-    const details = getComponentDetails(componentName);
-    if (!details) {
-      return reply.code(404).send({
-        success: false,
-        error: {
-          code: "COMPONENT_NOT_FOUND",
-          message: `Component '${componentName}' was not found.`,
-        },
-      });
-    }
-
-    return {
-      success: true,
-      data: {
-        name: componentName,
-        ...details,
+// ---------------------------------------------------------------------------
+// Versioned REST endpoints (/v1/tools/...)
+// ---------------------------------------------------------------------------
+await app.register(
+  async (v1) => {
+    v1.get<{ Querystring: GetThemeQuery }>(
+      "/tools/get-theme",
+      async (request, reply) => {
+        const themeName = request.query.theme?.trim() || "default";
+        try {
+          return { success: true, data: getTheme(themeName) };
+        } catch {
+          return reply
+            .code(404)
+            .send({
+              success: false,
+              error: {
+                code: "THEME_NOT_FOUND",
+                message: `Theme '${themeName}' was not found.`,
+              },
+            });
+        }
       },
-    };
-  },
-);
+    );
 
-app.get<{ Querystring: SearchComponentsQuery }>(
-  "/tools/search-components",
-  async (request, reply) => {
-    const query = request.query.q?.trim();
-
-    if (!query) {
-      return reply.code(400).send({
-        success: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Query parameter 'q' is required.",
-        },
-      });
-    }
-
-    return {
-      success: true,
-      data: searchComponents(query),
-    };
-  },
-);
-
-app.get<{ Querystring: GetLayoutPatternsQuery }>(
-  "/tools/get-layout-patterns",
-  async (request, reply) => {
-    const result = getLayoutPatterns({
-      category: request.query.category?.trim(),
-      q: request.query.q?.trim(),
+    v1.get("/tools/list-components", async () => {
+      return { success: true, data: listComponents() };
     });
 
-    if (result === null) {
-      return reply.code(404).send({
-        success: false,
-        error: {
-          code: "LAYOUT_NOT_FOUND",
-          message: `Layout category '${request.query.category}' was not found.`,
-        },
-      });
-    }
-
-    return {
-      success: true,
-      data: result,
-    };
-  },
-);
-
-app.post<{ Body: ValidateDesignBody }>(
-  "/tools/validate-design",
-  async (request, reply) => {
-    try {
-      const result = validateDesign(request.body);
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error) {
-      return reply.code(400).send({
-        success: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message:
-            error instanceof Error ? error.message : "Invalid request body.",
-        },
-      });
-    }
-  },
-);
-
-app.get("/tools/get-tailwind-theme", async (_, reply) => {
-  try {
-    const theme = getTailwindTheme();
-    return {
-      success: true,
-      data: theme,
-    };
-  } catch {
-    return reply.code(404).send({
-      success: false,
-      error: {
-        code: "TAILWIND_CONFIG_NOT_FOUND",
-        message: "tailwind.config.ts or tailwind.config.js not found.",
+    v1.get<{ Querystring: GetComponentDetailsQuery }>(
+      "/tools/get-component-details",
+      async (request, reply) => {
+        const componentName = request.query.name?.trim();
+        if (!componentName) {
+          return reply
+            .code(400)
+            .send({
+              success: false,
+              error: {
+                code: "INVALID_REQUEST",
+                message: "Query parameter 'name' is required.",
+              },
+            });
+        }
+        const details = getComponentDetails(componentName);
+        if (!details) {
+          return reply
+            .code(404)
+            .send({
+              success: false,
+              error: {
+                code: "COMPONENT_NOT_FOUND",
+                message: `Component '${componentName}' was not found.`,
+              },
+            });
+        }
+        return { success: true, data: { name: componentName, ...details } };
       },
+    );
+
+    v1.get<{ Querystring: SearchComponentsQuery }>(
+      "/tools/search-components",
+      async (request, reply) => {
+        const query = request.query.q?.trim();
+        if (!query) {
+          return reply
+            .code(400)
+            .send({
+              success: false,
+              error: {
+                code: "INVALID_REQUEST",
+                message: "Query parameter 'q' is required.",
+              },
+            });
+        }
+        return { success: true, data: searchComponents(query) };
+      },
+    );
+
+    v1.get<{ Querystring: GetLayoutPatternsQuery }>(
+      "/tools/get-layout-patterns",
+      async (request, reply) => {
+        const result = getLayoutPatterns({
+          category: request.query.category?.trim(),
+          q: request.query.q?.trim(),
+        });
+        if (result === null) {
+          return reply
+            .code(404)
+            .send({
+              success: false,
+              error: {
+                code: "LAYOUT_NOT_FOUND",
+                message: `Layout category '${request.query.category}' was not found.`,
+              },
+            });
+        }
+        return { success: true, data: result };
+      },
+    );
+
+    v1.post<{ Body: ValidateDesignBody }>(
+      "/tools/validate-design",
+      async (request, reply) => {
+        try {
+          return { success: true, data: validateDesign(request.body) };
+        } catch (error) {
+          return reply
+            .code(400)
+            .send({
+              success: false,
+              error: {
+                code: "INVALID_REQUEST",
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : "Invalid request body.",
+              },
+            });
+        }
+      },
+    );
+
+    v1.get("/tools/get-tailwind-theme", async (_, reply) => {
+      try {
+        return { success: true, data: getTailwindTheme() };
+      } catch {
+        return reply
+          .code(404)
+          .send({
+            success: false,
+            error: {
+              code: "TAILWIND_CONFIG_NOT_FOUND",
+              message: "tailwind.config.ts or tailwind.config.js not found.",
+            },
+          });
+      }
     });
-  }
-});
 
-app.get("/tools/get-component-deprecated", async () => {
-  const deprecated = getComponentDeprecated();
-  return {
-    success: true,
-    data: deprecated,
-  };
-});
+    v1.get("/tools/list-component-stories", async () => {
+      try {
+        return { success: true, data: await listComponentStories() };
+      } catch {
+        return { success: true, data: {} };
+      }
+    });
 
-app.get("/tools/list-component-stories", async () => {
-  try {
-    const stories = await listComponentStories();
-    return {
-      success: true,
-      data: stories,
-    };
-  } catch {
-    return {
-      success: true,
-      data: {},
-    };
-  }
-});
-
-app.post<{ Body: { componentName: string; props?: Record<string, any> } }>(
-  "/tools/validate-accessibility",
-  async (request, reply) => {
-    try {
-      const result = validateAccessibility(request.body);
-      return {
-        success: true,
-        data: result,
+    v1.post<{
+      Body: {
+        componentName: string;
+        props?: Record<string, unknown>;
+        theme?: string;
       };
-    } catch (error) {
-      return reply.code(400).send({
-        success: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: error instanceof Error ? error.message : "Invalid request body.",
-        },
-      });
-    }
+    }>("/tools/validate-accessibility", async (request, reply) => {
+      try {
+        return { success: true, data: validateAccessibility(request.body) };
+      } catch (error) {
+        return reply
+          .code(400)
+          .send({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Invalid request body.",
+            },
+          });
+      }
+    });
+
+    v1.get<{ Querystring: { a?: string; b?: string } }>(
+      "/tools/compare-themes",
+      async (request, reply) => {
+        const themeA = request.query.a?.trim();
+        const themeB = request.query.b?.trim();
+        if (!themeA || !themeB) {
+          return reply.code(400).send({
+            success: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message:
+                "Query parameters 'a' and 'b' (theme names) are required.",
+            },
+          });
+        }
+        try {
+          return { success: true, data: compareThemes(themeA, themeB) };
+        } catch (error) {
+          return reply.code(404).send({
+            success: false,
+            error: {
+              code: "THEME_NOT_FOUND",
+              message:
+                error instanceof Error ? error.message : "Theme not found.",
+            },
+          });
+        }
+      },
+    );
   },
+  { prefix: "/v1" },
 );
 
-app.get("/health", async () => {
-  return {
-    success: true,
-  };
-});
+// ---------------------------------------------------------------------------
+// Health check (unversioned — monitoring tools expect a stable URL)
+// ---------------------------------------------------------------------------
+app.get("/health", async () => ({ success: true }));
+
+// ---------------------------------------------------------------------------
+// Startup: validate all theme files before accepting requests
+// ---------------------------------------------------------------------------
+function validateStartupThemes(): void {
+  const themesDir = path.join(process.cwd(), "themes");
+  let files: string[];
+
+  try {
+    files = readdirSync(themesDir).filter((f) => f.endsWith(".json"));
+  } catch {
+    app.log.error({ themesDir }, "STARTUP ERROR: Cannot read themes directory");
+    process.exit(1);
+  }
+
+  if (files.length === 0) {
+    app.log.error({ themesDir }, "STARTUP ERROR: No theme files found in themes directory");
+    process.exit(1);
+  }
+
+  const errors: string[] = [];
+  // Clear cache so we get a fresh validated load for each theme
+  clearThemeCache();
+
+  for (const file of files) {
+    const themeName = file.replace(".json", "");
+    try {
+      loadTheme(themeName);
+    } catch (err) {
+      errors.push(
+        `  - ${file}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  if (errors.length > 0) {
+    app.log.error({ errors }, "STARTUP ERROR: One or more theme files are invalid");
+    process.exit(1);
+  }
+
+  app.log.info({ count: files.length, files }, "Startup theme validation passed");
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+validateStartupThemes();
 
 await app
-  .listen({
-    port: 3000,
-  })
+  .listen({ port: 3000 })
   .then(() => {
-    console.log("Design System MCP server is running on http://localhost:3000");
+    app.log.info("Design System MCP server is running on http://localhost:3000");
   })
   .catch((err) => {
-    console.error("Failed to start server:", err);
+    app.log.error({ err }, "Failed to start server");
     process.exit(1);
   });

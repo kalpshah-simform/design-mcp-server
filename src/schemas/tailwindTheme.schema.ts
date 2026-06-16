@@ -6,6 +6,7 @@ export const tailwindThemeSchema = z.object({
   breakpoints: z.record(z.string(), z.string()).optional(),
   borderRadius: z.record(z.string(), z.string()).optional(),
   boxShadow: z.record(z.string(), z.string()).optional(),
+  parserWarnings: z.array(z.string()).optional(),
 });
 
 export type TailwindTheme = z.infer<typeof tailwindThemeSchema>;

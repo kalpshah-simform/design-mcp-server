@@ -1,64 +1,242 @@
 {
   "Button": {
-    "description": "Primary action button",
+    "description": "Primary action button for triggering user-initiated actions",
     "props": {
-      "variant": ["primary", "secondary"],
-      "size": ["sm", "md", "lg"]
+      "variant": {
+        "type": "enum",
+        "values": ["primary", "secondary"],
+        "required": true,
+        "default": "primary",
+        "description": "Visual style of the button"
+      },
+      "size": {
+        "type": "enum",
+        "values": ["sm", "md", "lg"],
+        "required": false,
+        "default": "md",
+        "description": "Height and padding scale"
+      },
+      "disabled": {
+        "type": "boolean",
+        "required": false,
+        "default": "false",
+        "description": "Prevents interaction and applies disabled styling"
+      },
+      "aria-label": {
+        "type": "string",
+        "required": false,
+        "description": "Accessible name for icon-only or context-ambiguous buttons"
+      },
+      "onClick": {
+        "type": "ref",
+        "required": false,
+        "description": "Click event handler"
+      }
     },
-    "examples": ["<Button variant='primary'>Save</Button>"],
-    "tags": ["actions", "forms", "cta"],
-    "deprecated": false
+    "examples": [
+      "<Button variant='primary'>Save</Button>",
+      "<Button variant='secondary' size='sm' onClick={handleCancel}>Cancel</Button>",
+      "<Button variant='primary' disabled aria-label='Submit form'>Submit</Button>"
+    ],
+    "tags": ["actions", "forms", "cta", "interactive"],
+    "aliases": ["action", "cta", "submit", "click", "btn"],
+    "interactive": true,
+    "deprecated": false,
+    "docsUrl": "https://design.example.com/components/button",
+    "storybookUrl": "https://storybook.example.com/?path=/docs/components-button--docs"
   },
   "Input": {
-    "description": "Text input field for forms",
+    "description": "Text input field for collecting user data in forms",
     "props": {
-      "type": ["text", "email", "password"],
-      "size": ["sm", "md", "lg"]
+      "type": {
+        "type": "enum",
+        "values": ["text", "email", "password", "number", "tel", "url"],
+        "required": false,
+        "default": "text",
+        "description": "HTML input type"
+      },
+      "size": {
+        "type": "enum",
+        "values": ["sm", "md", "lg"],
+        "required": false,
+        "default": "md",
+        "description": "Height and font scale of the field"
+      },
+      "placeholder": {
+        "type": "string",
+        "required": false,
+        "description": "Hint text shown when the field is empty"
+      },
+      "label": {
+        "type": "string",
+        "required": false,
+        "description": "Visible label rendered above the input"
+      },
+      "disabled": {
+        "type": "boolean",
+        "required": false,
+        "default": "false",
+        "description": "Disables input interaction"
+      },
+      "required": {
+        "type": "boolean",
+        "required": false,
+        "default": "false",
+        "description": "Marks field as required for form validation"
+      },
+      "aria-label": {
+        "type": "string",
+        "required": false,
+        "description": "Accessible label when no visible label is present"
+      }
     },
-    "examples": ["<Input type='email' placeholder='name@example.com' />"],
-    "tags": ["forms", "fields", "data-entry"],
-    "deprecated": false
+    "examples": [
+      "<Input type='email' placeholder='name@example.com' />",
+      "<Input type='password' label='Password' required />",
+      "<Input type='text' label='First name' size='lg' />"
+    ],
+    "tags": ["forms", "fields", "data-entry", "interactive"],
+    "aliases": ["field", "text-input", "form-control", "textbox", "text field"],
+    "interactive": true,
+    "deprecated": false,
+    "docsUrl": "https://design.example.com/components/input",
+    "storybookUrl": "https://storybook.example.com/?path=/docs/components-input--docs"
   },
   "Card": {
-    "description": "Content container with optional header/footer",
+    "description": "Content container with optional header, body, and footer sections",
     "props": {
-      "elevation": ["none", "sm", "md"],
-      "padding": ["sm", "md", "lg"]
+      "elevation": {
+        "type": "enum",
+        "values": ["none", "sm", "md"],
+        "required": false,
+        "default": "none",
+        "description": "Box shadow depth"
+      },
+      "padding": {
+        "type": "enum",
+        "values": ["sm", "md", "lg"],
+        "required": false,
+        "default": "md",
+        "description": "Internal spacing"
+      },
+      "bordered": {
+        "type": "boolean",
+        "required": false,
+        "default": "false",
+        "description": "Adds a 1px border around the card"
+      }
     },
-    "examples": ["<Card elevation='sm'>Content</Card>"],
+    "examples": [
+      "<Card elevation='sm'>Content</Card>",
+      "<Card elevation='md' padding='lg' bordered>Dashboard widget</Card>"
+    ],
     "tags": ["layout", "container", "dashboard"],
-    "deprecated": false
+    "aliases": ["container", "panel", "box", "tile", "widget"],
+    "interactive": false,
+    "deprecated": false,
+    "docsUrl": "https://design.example.com/components/card",
+    "storybookUrl": "https://storybook.example.com/?path=/docs/components-card--docs"
   },
   "Modal": {
-    "description": "Overlay dialog for focused tasks",
+    "description": "Overlay dialog for focused tasks that require user attention before continuing",
     "props": {
-      "size": ["sm", "md", "lg"],
-      "dismissible": ["true", "false"]
+      "size": {
+        "type": "enum",
+        "values": ["sm", "md", "lg"],
+        "required": false,
+        "default": "md",
+        "description": "Width of the modal dialog"
+      },
+      "dismissible": {
+        "type": "boolean",
+        "required": false,
+        "default": "true",
+        "description": "Allow close via backdrop click or Escape key"
+      },
+      "title": {
+        "type": "string",
+        "required": false,
+        "description": "Heading in the modal header"
+      },
+      "aria-labelledby": {
+        "type": "string",
+        "required": false,
+        "description": "ID of the element labelling the dialog (for screen readers)"
+      }
     },
-    "examples": ["<Modal size='md' dismissible='true' />"],
-    "tags": ["overlay", "dialog", "confirmation"],
-    "deprecated": false
+    "examples": [
+      "<Modal size='md' dismissible>Content</Modal>",
+      "<Modal size='lg' title='Confirm deletion' aria-labelledby='modal-title'>Are you sure?</Modal>"
+    ],
+    "tags": ["overlay", "dialog", "confirmation", "interactive"],
+    "aliases": ["dialog", "popup", "confirm", "lightbox", "overlay", "alert dialog"],
+    "interactive": true,
+    "deprecated": false,
+    "docsUrl": "https://design.example.com/components/modal",
+    "storybookUrl": "https://storybook.example.com/?path=/docs/components-modal--docs"
   },
   "DataTable": {
-    "description": "Tabular data view with sorting and pagination",
+    "description": "Tabular data view with built-in column sorting and pagination controls",
     "props": {
-      "density": ["compact", "comfortable"],
-      "pagination": ["true", "false"]
+      "density": {
+        "type": "enum",
+        "values": ["compact", "comfortable"],
+        "required": false,
+        "default": "comfortable",
+        "description": "Row height and cell padding"
+      },
+      "pagination": {
+        "type": "boolean",
+        "required": false,
+        "default": "true",
+        "description": "Show pagination controls below the table"
+      },
+      "sortable": {
+        "type": "boolean",
+        "required": false,
+        "default": "true",
+        "description": "Enable column header click-to-sort"
+      },
+      "caption": {
+        "type": "string",
+        "required": false,
+        "description": "Accessible caption for the table (read by screen readers)"
+      }
     },
-    "examples": ["<DataTable pagination='true' />"],
-    "tags": ["table", "pagination", "admin", "reporting"],
-    "deprecated": false
+    "examples": [
+      "<DataTable pagination={true} />",
+      "<DataTable density='compact' sortable caption='User accounts' />",
+      "<DataTable pagination={false} density='comfortable' />"
+    ],
+    "tags": ["table", "pagination", "admin", "reporting", "data"],
+    "aliases": ["table", "grid", "data-grid", "list", "rows", "spreadsheet"],
+    "interactive": false,
+    "deprecated": false,
+    "docsUrl": "https://design.example.com/components/data-table",
+    "storybookUrl": "https://storybook.example.com/?path=/docs/components-datatable--docs"
   },
   "ButtonLegacy": {
     "description": "Legacy button component (deprecated, use Button instead)",
     "props": {
-      "type": ["button", "submit", "reset"]
+      "type": {
+        "type": "enum",
+        "values": ["button", "submit", "reset"],
+        "required": false,
+        "default": "button",
+        "description": "HTML button type attribute"
+      }
     },
-    "examples": ["<ButtonLegacy type='button'>Click</ButtonLegacy>"],
+    "examples": [
+      "<ButtonLegacy type='button'>Click</ButtonLegacy>"
+    ],
     "tags": ["actions", "forms", "deprecated"],
+    "aliases": [],
+    "interactive": true,
     "deprecated": true,
     "deprecatedVersion": "2.0.0",
     "replacement": "Button",
-    "migrationNotes": "ButtonLegacy was renamed to Button in v2.0.0. Update all imports from ButtonLegacy to Button and use the new 'variant' prop instead of 'type' prop."
+    "migrationNotes": "ButtonLegacy was renamed to Button in v2.0.0. Update all imports from ButtonLegacy to Button and use the new 'variant' prop instead of 'type' prop.",
+    "docsUrl": "https://design.example.com/components/button-legacy",
+    "storybookUrl": "https://storybook.example.com/?path=/docs/components-buttonlegacy--docs"
   }
 }

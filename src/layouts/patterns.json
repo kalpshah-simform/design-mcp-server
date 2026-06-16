@@ -4,83 +4,251 @@
     "name": "Dashboard Layout",
     "description": "Multi-section dashboard with sidebar navigation and main content area for data visualization and overview cards.",
     "tags": ["admin", "data", "overview", "cards", "navigation"],
+    "breakpoints": {
+      "sm": "Single column; sidebar collapses to a top hamburger menu.",
+      "md": "Sidebar hidden by default, toggled via a drawer.",
+      "lg": "Full two-column layout with persistent sidebar."
+    },
     "slots": {
       "header": {
         "description": "Top navigation bar with branding and user profile",
-        "suggestedComponents": ["Button", "Input", "Card"]
+        "suggestedComponents": ["Button", "Input", "Card"],
+        "responsive": {
+          "sm": "Full-width bar; collapse nav links into a hamburger Button.",
+          "md": "Show primary nav links; hide secondary actions.",
+          "lg": "Full header with all nav links and user profile visible."
+        }
       },
       "sidebar": {
         "description": "Left sidebar with navigation menu and filters",
-        "suggestedComponents": ["Button", "Card"]
+        "suggestedComponents": ["Button", "Card"],
+        "responsive": {
+          "sm": "Hidden; replaced by bottom tab bar or drawer (see mobile-tabs pattern).",
+          "md": "Icon-only collapsed sidebar (w-16); expand on hover.",
+          "lg": "Full-width sidebar (w-64) always visible."
+        }
       },
       "main": {
         "description": "Central content area with data cards and visualizations",
-        "suggestedComponents": ["Card", "DataTable", "Button"]
+        "suggestedComponents": ["Card", "DataTable", "Button"],
+        "responsive": {
+          "sm": "Single column stack; DataTable switches to card-per-row view.",
+          "md": "Two-column card grid.",
+          "lg": "Three or four-column card grid with full DataTable."
+        }
       },
       "footer": {
         "description": "Bottom footer with pagination or additional controls",
-        "suggestedComponents": ["Button", "Card"]
+        "suggestedComponents": ["Button", "Card"],
+        "responsive": {
+          "sm": "Pagination controls stack vertically; hide secondary links.",
+          "md": "Inline pagination with page size selector.",
+          "lg": "Full footer with pagination and metadata."
+        }
       }
     },
-    "example": "<div className='flex h-screen'><aside className='w-64 bg-gray-900'>{/* sidebar */}</aside><main className='flex-1 flex flex-col'><header className='bg-white border-b'>{/* header */}</header><section className='flex-1 overflow-auto p-6'>{/* main content grid */}</section><footer className='bg-gray-50 border-t p-4'>{/* footer */}</footer></main></div>"
+    "example": "<div className='flex h-screen'><aside className='w-64 bg-gray-900 hidden lg:block'>{/* sidebar */}</aside><main className='flex-1 flex flex-col'><header className='bg-white border-b'>{/* header */}</header><section className='flex-1 overflow-auto p-6'><div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>{/* cards */}</div></section><footer className='bg-gray-50 border-t p-4'>{/* footer */}</footer></main></div>",
+    "mobileExample": "<div className='flex flex-col h-screen'><header className='bg-white border-b px-4 py-3 flex items-center justify-between'><Button variant='secondary' aria-label='Open menu'>☰</Button><span className='font-bold'>Dashboard</span></header><main className='flex-1 overflow-auto p-4'><div className='space-y-4'>{/* stacked cards */}</div></main><nav className='bg-white border-t flex justify-around py-2'>{/* bottom tab buttons */}</nav></div>"
   },
   "auth": {
     "id": "auth",
     "name": "Authentication Layout",
     "description": "Centered single-column card layout for login, registration, or other authentication flows.",
     "tags": ["auth", "login", "register", "forms", "public"],
+    "breakpoints": {
+      "sm": "Full-screen card; no card border — form fields fill the viewport with padding.",
+      "md": "Centered card (max-w-sm) with shadow on a neutral background.",
+      "lg": "Same as md; optionally show a branded illustration panel to the left."
+    },
     "slots": {
       "logo": {
         "description": "Logo or branding area at the top",
-        "suggestedComponents": ["Card"]
+        "suggestedComponents": ["Card"],
+        "responsive": {
+          "sm": "Logo centered, smaller size (h-8).",
+          "md": "Logo centered, standard size (h-10).",
+          "lg": "Logo in sidebar panel or centered above card."
+        }
       },
       "main": {
         "description": "Central card containing form fields and submission controls",
-        "suggestedComponents": ["Input", "Button", "Card"]
+        "suggestedComponents": ["Input", "Button", "Card"],
+        "responsive": {
+          "sm": "No card wrapper; fields span full width with px-4.",
+          "md": "Card with rounded-lg shadow, p-8.",
+          "lg": "Same as md."
+        }
       },
       "footer": {
         "description": "Bottom links for password recovery, sign up, or terms",
-        "suggestedComponents": ["Button"]
+        "suggestedComponents": ["Button"],
+        "responsive": {
+          "sm": "Links stacked vertically, centered.",
+          "md": "Links inline, centered below card.",
+          "lg": "Same as md."
+        }
       }
     },
-    "example": "<div className='min-h-screen flex items-center justify-center bg-gray-50 px-4'><div className='w-full max-w-md'><div className='mb-8 text-center'>{/* logo */}</div><div className='bg-white rounded-lg shadow'>{/* form card */}</div><div className='mt-4 text-center'>{/* footer links */}</div></div></div>"
+    "example": "<div className='min-h-screen flex items-center justify-center bg-gray-50 px-4'><div className='w-full max-w-md'><div className='mb-8 text-center'>{/* logo */}</div><div className='bg-white rounded-lg shadow p-8'>{/* form card */}</div><div className='mt-4 text-center'>{/* footer links */}</div></div></div>",
+    "mobileExample": "<div className='min-h-screen flex flex-col px-4 py-8'><div className='mb-6 text-center'>{/* logo */}</div><div className='space-y-4'>{/* form fields full-width */}</div><Button variant='primary' className='w-full mt-4'>Sign In</Button><div className='mt-6 text-center space-y-2'>{/* stacked footer links */}</div></div>"
   },
   "form": {
     "id": "form",
     "name": "Form Layout",
     "description": "Two-column form layout with labeled fields and a separate action bar for submit and cancel buttons.",
     "tags": ["form", "settings", "data-entry", "fields"],
+    "breakpoints": {
+      "sm": "Single-column; each field spans full width.",
+      "md": "Two-column grid for short fields (name, email); long fields (textarea) remain full-width.",
+      "lg": "Two-column grid with wider max-width container."
+    },
     "slots": {
       "header": {
         "description": "Form title and description section",
-        "suggestedComponents": ["Card"]
+        "suggestedComponents": ["Card"],
+        "responsive": {
+          "sm": "Title (text-xl) and description stacked, left-aligned.",
+          "md": "Title (text-2xl) with description beside or below.",
+          "lg": "Same as md."
+        }
       },
       "main": {
         "description": "Form fields arranged in a responsive grid with labels",
-        "suggestedComponents": ["Input", "Card"]
+        "suggestedComponents": ["Input", "Card"],
+        "responsive": {
+          "sm": "grid-cols-1; every Input full-width.",
+          "md": "grid-cols-2; pair related short fields side by side.",
+          "lg": "grid-cols-2 in max-w-2xl container."
+        }
       },
       "actions": {
         "description": "Action buttons aligned to the left or right",
-        "suggestedComponents": ["Button"]
+        "suggestedComponents": ["Button"],
+        "responsive": {
+          "sm": "Buttons stack vertically, full-width (primary on top).",
+          "md": "Buttons inline, right-aligned.",
+          "lg": "Same as md."
+        }
       }
     },
-    "example": "<form className='max-w-2xl'><div className='mb-6'><h2 className='text-2xl font-bold'>{/* title */}</h2><p className='text-gray-600'>{/* description */}</p></div><div className='space-y-6 mb-6'><div className='grid grid-cols-2 gap-4'>{/* input fields */}</div></div><div className='flex gap-3 justify-end'>{/* action buttons */}</div></form>"
+    "example": "<form className='max-w-2xl'><div className='mb-6'><h2 className='text-2xl font-bold'>{/* title */}</h2><p className='text-gray-600'>{/* description */}</p></div><div className='space-y-6 mb-6'><div className='grid grid-cols-1 md:grid-cols-2 gap-4'>{/* input fields */}</div></div><div className='flex flex-col-reverse sm:flex-row gap-3 sm:justify-end'>{/* action buttons */}</div></form>",
+    "mobileExample": "<form className='px-4 py-6'><div className='mb-4'><h2 className='text-xl font-bold'>{/* title */}</h2></div><div className='space-y-4 mb-6'><Input className='w-full' />{/* more full-width inputs */}</div><div className='space-y-3'><Button variant='primary' className='w-full'>Submit</Button><Button variant='secondary' className='w-full'>Cancel</Button></div></form>"
   },
   "settings": {
     "id": "settings",
     "name": "Settings Layout",
     "description": "Sidebar navigation with settings categories and corresponding content panel for managing preferences.",
     "tags": ["settings", "account", "preferences", "navigation"],
+    "breakpoints": {
+      "sm": "Sidebar becomes a full-width scrollable tab strip above the content panel.",
+      "md": "Sidebar is a compact list (w-40) to the left of the content panel.",
+      "lg": "Full sidebar (w-48) with icon + label navigation items."
+    },
     "slots": {
       "sidebar": {
         "description": "Left sidebar with settings category navigation",
-        "suggestedComponents": ["Button", "Card"]
+        "suggestedComponents": ["Button", "Card"],
+        "responsive": {
+          "sm": "Horizontal scrollable tab row at the top (overflow-x-auto).",
+          "md": "Vertical list (w-40), icon + short label per item.",
+          "lg": "Vertical list (w-48), icon + full label, active state highlighted."
+        }
       },
       "main": {
         "description": "Main panel showing the selected settings category content",
-        "suggestedComponents": ["Input", "Button", "Card"]
+        "suggestedComponents": ["Input", "Button", "Card"],
+        "responsive": {
+          "sm": "Full-width below the tab strip; fields single-column.",
+          "md": "Flex-1 panel beside sidebar; fields single-column.",
+          "lg": "Same as md; can use 2-column grid for dense field sets."
+        }
       }
     },
-    "example": "<div className='flex gap-6 max-w-4xl'><aside className='w-48 flex-shrink-0'><nav className='space-y-2'>{/* category buttons */}</nav></aside><main className='flex-1'><div className='bg-white rounded-lg p-6'>{/* settings form */}</div></main></div>"
+    "example": "<div className='flex flex-col md:flex-row gap-6 max-w-4xl'><aside className='w-full md:w-48 flex-shrink-0'><nav className='flex md:flex-col overflow-x-auto md:overflow-visible gap-1'>{/* category buttons */}</nav></aside><main className='flex-1 min-w-0'><div className='bg-white rounded-lg p-6'>{/* settings form */}</div></main></div>",
+    "mobileExample": "<div className='flex flex-col'><nav className='flex overflow-x-auto border-b'><Button variant='secondary' className='flex-shrink-0 px-4 py-2'>Profile</Button><Button variant='secondary' className='flex-shrink-0 px-4 py-2'>Security</Button>{/* more tabs */}</nav><main className='p-4'><div className='space-y-4'>{/* settings fields */}</div></main></div>"
+  },
+  "mobile-list": {
+    "id": "mobile-list",
+    "name": "Mobile List Layout",
+    "description": "Mobile-first scrollable list with a sticky header, a floating action button, and a pull-to-refresh zone. Optimized for touch targets and thumb-reachable actions.",
+    "tags": ["mobile", "list", "scroll", "touch", "fab"],
+    "breakpoints": {
+      "sm": "Primary layout — full-screen scrollable list with bottom FAB.",
+      "md": "Center the list in a max-w-lg container; FAB stays bottom-right.",
+      "lg": "Promote to a master-detail split: list on left, detail panel on right."
+    },
+    "slots": {
+      "header": {
+        "description": "Sticky top bar with title and optional search/filter",
+        "suggestedComponents": ["Input", "Button"],
+        "responsive": {
+          "sm": "Full-width sticky header (h-14); search Input collapses to icon button.",
+          "md": "Same but centered in max-w-lg.",
+          "lg": "Integrated into the master-pane header of the split layout."
+        }
+      },
+      "list": {
+        "description": "Scrollable item rows with swipe-to-action support",
+        "suggestedComponents": ["Card", "Button"],
+        "responsive": {
+          "sm": "Full-width Card rows; min-height 56px per row for touch.",
+          "md": "Same, centered in container.",
+          "lg": "Left panel of a master-detail split."
+        }
+      },
+      "fab": {
+        "description": "Floating action button for the primary create/add action",
+        "suggestedComponents": ["Button"],
+        "responsive": {
+          "sm": "Fixed bottom-right (bottom-6 right-4), circular, 56px min.",
+          "md": "Same position, within the max-w-lg container.",
+          "lg": "Replace with a standard Button in the detail panel header."
+        }
+      }
+    },
+    "example": "<div className='flex flex-col h-screen max-w-lg mx-auto'><header className='sticky top-0 bg-white border-b z-10 flex items-center px-4 h-14'><h1 className='flex-1 font-bold text-lg'>{/* title */}</h1><Button variant='secondary' aria-label='Search'>🔍</Button></header><main className='flex-1 overflow-y-auto divide-y'>{/* Card rows */}</main><Button variant='primary' className='fixed bottom-6 right-4 rounded-full w-14 h-14 shadow-lg' aria-label='Add item'>+</Button></div>",
+    "mobileExample": "<div className='flex flex-col h-screen'><header className='sticky top-0 bg-white border-b flex items-center px-4 h-14 gap-2'><span className='font-bold flex-1'>Items</span><Button variant='secondary' size='sm' aria-label='Search'>🔍</Button><Button variant='secondary' size='sm' aria-label='Filter'>⚙</Button></header><ul className='flex-1 overflow-y-auto'><li className='flex items-center px-4 py-4 border-b min-h-[56px]'><Card className='flex-1 p-0'>{/* row content */}</Card></li></ul><Button variant='primary' className='fixed bottom-6 right-4 rounded-full w-14 h-14 shadow-md' aria-label='Add'>+</Button></div>"
+  },
+  "mobile-tabs": {
+    "id": "mobile-tabs",
+    "name": "Mobile Tab Navigation Layout",
+    "description": "Mobile-first layout with a persistent bottom tab bar for primary navigation and a content area per tab. Mirrors native app navigation patterns.",
+    "tags": ["mobile", "navigation", "tabs", "bottom-bar", "touch"],
+    "breakpoints": {
+      "sm": "Bottom tab bar (5 tabs max); content fills the area above.",
+      "md": "Transition tab bar to a left sidebar; content expands.",
+      "lg": "Full sidebar layout (see dashboard or settings pattern)."
+    },
+    "slots": {
+      "header": {
+        "description": "Per-screen top bar with title and optional contextual actions",
+        "suggestedComponents": ["Button"],
+        "responsive": {
+          "sm": "Minimal bar (h-14) with screen title and 1–2 icon Buttons.",
+          "md": "Taller header with text labels on action Buttons.",
+          "lg": "Merged into the sidebar layout header."
+        }
+      },
+      "content": {
+        "description": "Active tab content area — scrolls independently of the tab bar",
+        "suggestedComponents": ["Card", "DataTable", "Input", "Button"],
+        "responsive": {
+          "sm": "Full-width, flex-1, overflow-y-auto above the tab bar.",
+          "md": "Content area beside a left nav; tab bar hidden.",
+          "lg": "Same as md with wider content container."
+        }
+      },
+      "tabBar": {
+        "description": "Persistent bottom navigation with icon + label per primary section",
+        "suggestedComponents": ["Button"],
+        "responsive": {
+          "sm": "Fixed bottom bar (h-16, safe-area-inset-bottom); 3–5 Button tabs.",
+          "md": "Hidden; replaced by left sidebar navigation.",
+          "lg": "Hidden; replaced by left sidebar navigation."
+        }
+      }
+    },
+    "example": "<div className='flex flex-col h-screen'><header className='sticky top-0 bg-white border-b flex items-center justify-between px-4 h-14'><h1 className='font-bold text-lg'>{/* screen title */}</h1><Button variant='secondary' aria-label='More options'>⋯</Button></header><main className='flex-1 overflow-y-auto pb-16'>{/* active tab content */}</main><nav className='fixed bottom-0 inset-x-0 bg-white border-t flex justify-around items-center h-16 pb-safe md:hidden'><Button variant='secondary' aria-label='Home'>🏠</Button><Button variant='secondary' aria-label='Search'>🔍</Button><Button variant='secondary' aria-label='Profile'>👤</Button></nav></div>",
+    "mobileExample": "<div className='flex flex-col h-[100dvh]'><header className='bg-white border-b px-4 h-14 flex items-center'><span className='font-bold'>Home</span></header><main className='flex-1 overflow-y-auto p-4 pb-20'><div className='space-y-4'>{/* tab content: Cards, etc. */}</div></main><nav className='fixed bottom-0 inset-x-0 h-16 bg-white border-t grid grid-cols-3'><Button variant='secondary' className='flex flex-col items-center justify-center gap-1 text-xs' aria-label='Home'>🏠<span>Home</span></Button><Button variant='secondary' className='flex flex-col items-center justify-center gap-1 text-xs' aria-label='Search'>🔍<span>Search</span></Button><Button variant='secondary' className='flex flex-col items-center justify-center gap-1 text-xs' aria-label='Profile'>👤<span>Profile</span></Button></nav></div>"
   }
 }

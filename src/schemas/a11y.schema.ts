@@ -5,6 +5,7 @@ export const a11yFindingSchema = z.object({
   valid: z.boolean(),
   code: z.string(),
   message: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const validateA11yInputSchema = z.object({

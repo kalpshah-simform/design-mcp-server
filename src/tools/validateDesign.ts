@@ -31,7 +31,7 @@ export function validateDesign(input: ValidateDesignInput): ValidateDesignOutput
   }
 
   const registry = loadComponentRegistry();
-  const themeColors = Object.values(themeData.colors || {});
+  const themeColors = Object.values(themeData.colors);
 
   for (let i = 0; i < input.components.length; i++) {
     const componentName = input.components[i];
